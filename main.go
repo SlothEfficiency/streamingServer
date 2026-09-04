@@ -1,50 +1,17 @@
 package main
 
-import (
-	"log"
-	"os"
-
-	"github.com/blackjack/webcam"
-)
+import "net/http"
 
 const timeout = uint32(1)
 
 func main() {
+	mux := http.NewServeMux()
 
-	// Initialize Camera
-	cam, err := webcam.Open("/dev/video0") // Open webcam
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	defer cam.Close()
+	mux.HandleFunc("GET /snapshot", webcamFrameHandler)
 
-	// Set Format
-	err = setCamFormat(cam, "Motion-JPEG")
-	if err != nil {
-		log.Println(err)
-		return
+	server := http.Server{
+		Addr:    ":8080",
+		Handler: mux,
 	}
-	// Start webcam
-	err = cam.StartStreaming()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	for {
-		// Take a picture
-		frame, err := nextFrame(cam, timeout)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		//Save the picture
-		err = os.WriteFile("frame.jpeg", frame, 0666)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-	}
+	server.ListenAndServe()
 }
