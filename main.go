@@ -1,48 +1,48 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/blackjack/webcam"
 )
+
+const timeout = uint32(1)
 
 func main() {
 
 	// Initialize Camera
 	cam, err := webcam.Open("/dev/video0") // Open webcam
 	if err != nil {
-		panic(err.Error())
+		log.Println(err)
+		return
 	}
 	defer cam.Close()
 
 	// Set Format
-	fmt.Println(w.Get)
-	pixelformat, width, height, err := cam.SetImageFormat(1196444237, 1280, 720)
+	err = setCamFormat(cam, "Motion-JPEG")
 	if err != nil {
-		panic(err.Error())
+		log.Println(err)
+		return
 	}
-	fmt.Printf("Format: %v, width: %v, height: %v\n", pixelformat, width, height)
-
+	// Start webcam
 	err = cam.StartStreaming()
 	if err != nil {
-		panic(err.Error())
-	}
-	err = cam.WaitForFrame(20)
-
-	switch err.(type) {
-	case nil:
-	case *webcam.Timeout:
-		fmt.Println("Timeout")
-		fmt.Fprint(os.Stderr, err.Error())
-	default:
-		panic(err.Error())
+		log.Println(err)
+		return
 	}
 
-	frame, err := cam.ReadFrame()
-	if len(frame) != 0 {
-		os.WriteFile("frame.jpeg", frame, 0666)
-	} else if err != nil {
-		panic(err.Error())
+	// Take a picture
+	frame, err := nextFrame(cam, timeout)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	//Save the picture
+	err = os.WriteFile("frame.jpeg", frame, 0666)
+	if err != nil {
+		log.Println(err)
+		return
 	}
 }
