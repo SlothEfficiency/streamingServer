@@ -31,7 +31,7 @@ func setCamFormat(cam *webcam.Webcam, formatName string) error {
 }
 
 func findMaxFrameSize(frameSizes []webcam.FrameSize) webcam.FrameSize {
-	maxIndex := 100000000000
+	maxIndex := 100000000
 	maxPixel := uint32(0)
 
 	// iterate over formats to find highest resolution
