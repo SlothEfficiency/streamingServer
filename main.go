@@ -7,7 +7,7 @@ const timeout = uint32(1)
 func main() {
 	mux := http.NewServeMux()
 
-	mux.Handle("/", http.FileServer(http.Dir("static")))
+	mux.HandleFunc("GET /", serveFileHandler)
 
 	mux.HandleFunc("GET /snapshot", webcamFrameHandler)
 	mux.HandleFunc("GET /stream", webcamStreamHandler)
@@ -17,4 +17,8 @@ func main() {
 		Handler: mux,
 	}
 	server.ListenAndServe()
+}
+
+func serveFileHandler(w http.ResponseWriter, r *http.Request) {
+	http.ServeFile(w, r, "static/")
 }
