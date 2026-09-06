@@ -42,6 +42,7 @@ func findNthBiggestFrameSize(frameSizes []webcam.FrameSize, n uint32) webcam.Fra
 	slices.SortFunc(frameSizes, func(a, b webcam.FrameSize) int {
 		return int(b.MaxWidth*b.MaxHeight - a.MaxWidth*a.MaxHeight)
 	})
-	log.Printf("Choosen %vth frameSize: %v", n, frameSizes[length-int(n)-1])
-	return frameSizes[length-int(n)-1]
+	log.Printf("Choosen %vth frameSize: %v\n", n, frameSizes[length-int(n)])
+	log.Printf("Possible Framesizes: %v\n", frameSizes)
+	return frameSizes[length-int(n)]
 }
