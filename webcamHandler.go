@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"sync"
 	"sync/atomic"
 
 	"github.com/blackjack/webcam"
@@ -13,12 +14,14 @@ type Camera struct {
 	CamReader          chan []byte
 	OpenStreamsCounter atomic.Int32
 	StopStream         chan struct{}
+	mu                 *sync.Mutex
 }
 
 func NewCamera() *Camera {
 	return &Camera{
 		CamReader:  make(chan []byte, 100),
 		StopStream: make(chan struct{}),
+		mu:         &sync.Mutex{},
 	}
 }
 
@@ -32,7 +35,6 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 		err := cam.initializeWebcam("Motion-JPEG")
 		if err != nil {
 			sendError(w, "Failed to initialize cam", 500, err)
-			cam.Cam.Close()
 			return
 		}
 		go cam.startStreaming()
@@ -57,9 +59,11 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cam *Camera) initializeWebcam(frameFormat string) error {
-	// Initialize Camera
 	var err error
-	cam.Cam, err = webcam.Open("/dev/video0") // Open webcam
+	cam.mu.Lock()
+	defer cam.mu.Unlock()
+
+	cam.Cam, err = webcam.Open("/dev/video0")
 	if err != nil {
 		log.Println(err)
 		return err
@@ -69,6 +73,7 @@ func (cam *Camera) initializeWebcam(frameFormat string) error {
 	err = setCamFormat(cam.Cam, frameFormat)
 	if err != nil {
 		log.Println(err)
+		cam.Cam.Close()
 	}
 	return err
 }
@@ -82,6 +87,8 @@ func (cam *Camera) startStreaming() error {
 	for {
 		select {
 		case <-cam.StopStream:
+			cam.mu.Lock()
+			defer cam.mu.Unlock()
 			cam.Cam.Close()
 			return nil
 		default:
