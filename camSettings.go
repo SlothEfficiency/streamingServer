@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"slices"
 
 	"github.com/blackjack/webcam"
 )
@@ -15,7 +17,7 @@ func setCamFormat(cam *webcam.Webcam, formatName string) error {
 			frameSizes := cam.GetSupportedFrameSizes(format)
 
 			// Always choose max Resolution
-			maxFrameSize := findMaxFrameSize(frameSizes)
+			maxFrameSize := findNthBiggestFrameSize(frameSizes, 2)
 			pixelformat, width, height, err := cam.SetImageFormat(format, maxFrameSize.MaxWidth, maxFrameSize.MaxHeight)
 			if err != nil {
 				fmt.Println("Couldn't set CamFormat.")
@@ -30,16 +32,14 @@ func setCamFormat(cam *webcam.Webcam, formatName string) error {
 	return fmt.Errorf("CamFormat was not found.")
 }
 
-func findMaxFrameSize(frameSizes []webcam.FrameSize) webcam.FrameSize {
-	maxIndex := 0
-	maxPixel := uint32(10000000)
-
-	// iterate over formats to find highest resolution
-	for i, frameSize := range frameSizes {
-		if frameSize.MaxWidth*frameSize.MaxHeight < maxPixel {
-			maxIndex = i
-			maxPixel = frameSize.MaxWidth * frameSize.MaxHeight
-		}
+func findNthBiggestFrameSize(frameSizes []webcam.FrameSize, n uint32) webcam.FrameSize {
+	log.Printf("Possible Framesizes: %v\n", frameSizes)
+	if n > uint32(len(frameSizes)) {
+		return frameSizes[len(frameSizes)-1]
 	}
-	return frameSizes[maxIndex]
+
+	slices.SortFunc(frameSizes, func(a, b webcam.FrameSize) int {
+		return int(b.MaxWidth*b.MaxHeight - a.MaxWidth*a.MaxHeight)
+	})
+	return frameSizes[n-1]
 }
