@@ -87,7 +87,6 @@ func (cam *Camera) startStreaming() error {
 				log.Printf("Couldn't read frame: %v", err)
 			}
 			cam.CamReader <- frame
-			log.Println("Neuer Frame gelesen.")
 		}
 	}
 }
