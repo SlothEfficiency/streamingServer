@@ -15,11 +15,19 @@ type Camera struct {
 	StopStream         chan struct{}
 }
 
+func NewCamera() *Camera {
+	return &Camera{
+		CamReader:  make(chan []byte, 100),
+		StopStream: make(chan struct{}),
+	}
+}
+
 func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
-	if cam.OpenStreamsCounter.Load() == 0 {
+	if cam.OpenStreamsCounter.CompareAndSwap(0, 1) {
 		err := cam.initializeWebcam("Motion-JPEG")
 		if err != nil {
 			sendError(w, "Failed to initialize cam", 500, err)
+			cam.Cam.Close()
 			return
 		}
 		go cam.startStreaming()
@@ -27,7 +35,6 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
 	w.WriteHeader(200)
-	cam.OpenStreamsCounter.Add(1)
 
 	for {
 		select {
@@ -44,21 +51,6 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-
-/* func webcamFrameHandler(w http.ResponseWriter, r *http.Request) {
-	cam, err := initializeWebcam("Motion-JPEG")
-	if err != nil {
-		sendError(w, "Failed to initialize cam", 500, err)
-	}
-	defer cam.Close()
-
-	frame, err := nextFrame(cam, timeout)
-	if err != nil {
-		sendError(w, "Failed to read frame", 500, err)
-	}
-
-	sendResponse(w, 200, "image/jpeg", frame)
-} */
 
 func (cam *Camera) initializeWebcam(frameFormat string) error {
 	// Initialize Camera

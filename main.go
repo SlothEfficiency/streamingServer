@@ -5,13 +5,12 @@ import "net/http"
 const timeout = uint32(1)
 
 func main() {
-	cam := Camera{}
+	cam := NewCamera()
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /", serveFileHandler)
 
-	/* 	mux.HandleFunc("GET /snapshot", webcamFrameHandler) */
 	mux.HandleFunc("GET /stream", cam.webcamStreamHandler)
 
 	server := http.Server{
