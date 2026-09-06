@@ -80,6 +80,8 @@ func (cam *Camera) initializeWebcam(frameFormat string) error {
 
 func (cam *Camera) startStreaming() error {
 	err := cam.Cam.StartStreaming()
+	cam.mu.Lock()
+	defer cam.mu.Unlock()
 	if err != nil {
 		log.Println(err)
 		return err
@@ -87,8 +89,6 @@ func (cam *Camera) startStreaming() error {
 	for {
 		select {
 		case <-cam.StopStream:
-			cam.mu.Lock()
-			defer cam.mu.Unlock()
 			cam.Cam.Close()
 			return nil
 		default:
