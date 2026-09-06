@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	"log"
 	"net/http"
 	"sync"
@@ -32,8 +32,12 @@ func (cam *Camera) stateReaderHandler(w http.ResponseWriter, r *http.Request) {
 	cam.mu.Lock()
 	defer cam.mu.Unlock()
 	w.WriteHeader(200)
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(fmt.Sprintf("%v", cam.OpenStreamsCounter)))
+	w.Header().Set("Content-Type", "application/json")
+	payload, err := json.Marshal(cam)
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
+	w.Write(payload)
 }
 
 func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
@@ -99,15 +103,13 @@ func (cam *Camera) startStreaming() error {
 	log.Println("I wait to start the streaming")
 	cam.mu.Lock()
 	err := cam.Cam.StartStreaming()
-
+	cam.mu.Unlock()
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-	cam.mu.Unlock()
 
 	for {
-
 		select {
 		case <-cam.StopStream:
 			log.Println("I stop the for loop")
