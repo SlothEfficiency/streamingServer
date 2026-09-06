@@ -29,12 +29,15 @@ func NewCamera() *Camera {
 }
 
 func (cam *Camera) stateReaderHandler(w http.ResponseWriter, r *http.Request) {
+	cam.mu.Lock()
+	defer cam.mu.Unlock()
 	w.WriteHeader(200)
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("%v", cam.OpenStreamsCounter)))
 }
 
 func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("I wait to start the handling")
 	cam.mu.Lock()
 	if cam.OpenStreamsCounter == 0 {
 		cam.OpenStreamsCounter += 1
@@ -57,6 +60,7 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
+			log.Println("I wait to close the cam.")
 			cam.mu.Lock()
 			cam.OpenStreamsCounter -= 1
 			if cam.OpenStreamsCounter == 0 {
@@ -91,6 +95,7 @@ func (cam *Camera) initializeWebcam(frameFormat string) error {
 }
 
 func (cam *Camera) startStreaming() error {
+	log.Println("I wait to start the streaming")
 	cam.mu.Lock()
 	err := cam.Cam.StartStreaming()
 
@@ -101,6 +106,7 @@ func (cam *Camera) startStreaming() error {
 	cam.mu.Unlock()
 
 	for {
+		log.Println("I wait to deliver the next frame")
 		cam.mu.Lock()
 		select {
 		case <-cam.StopStream:
