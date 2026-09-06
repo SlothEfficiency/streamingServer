@@ -44,6 +44,7 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		cam.mu.Unlock()
 		go cam.startStreaming()
+		log.Println("Stream was started.")
 	} else {
 		cam.OpenStreamsCounter += 1
 		cam.mu.Unlock()
@@ -96,6 +97,7 @@ func (cam *Camera) startStreaming() error {
 		log.Println(err)
 		return err
 	}
+	cam.mu.Unlock()
 
 	for {
 		cam.mu.Lock()
