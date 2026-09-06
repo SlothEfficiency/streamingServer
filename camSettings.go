@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"slices"
 
 	"github.com/blackjack/webcam"
@@ -43,8 +42,6 @@ func findNthBiggestFrameSize(frameSizes []webcam.FrameSize, n uint32) webcam.Fra
 	sliceToSort := make([]webcam.FrameSize, length)
 	copy(sliceToSort, frameSizes)
 
-	log.Printf("Possible Framesizes: %v\n", sliceToSort)
-
 	// Sort descending by area (MaxWidth * MaxHeight)
 	slices.SortFunc(sliceToSort, func(a, b webcam.FrameSize) int {
 		areaA := a.MaxWidth * a.MaxHeight
@@ -56,8 +53,6 @@ func findNthBiggestFrameSize(frameSizes []webcam.FrameSize, n uint32) webcam.Fra
 		}
 		return 0
 	})
-	log.Printf("Choosen %vth frameSize: %v\n", n, sliceToSort[n-1])
-	log.Printf("Possible Framesizes: %v\n", sliceToSort)
 
 	return sliceToSort[n-1]
 }

@@ -27,6 +27,7 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
 	w.WriteHeader(200)
+	cam.OpenStreamsCounter.Add(1)
 
 	for {
 		select {
@@ -94,6 +95,7 @@ func (cam *Camera) startStreaming() error {
 				log.Printf("Couldn't read frame: %v", err)
 			}
 			cam.CamReader <- frame
+			log.Println("Neuer Frame gelesen.")
 		}
 	}
 }
