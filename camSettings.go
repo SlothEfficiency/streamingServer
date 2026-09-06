@@ -33,17 +33,31 @@ func setCamFormat(cam *webcam.Webcam, formatName string) error {
 }
 
 func findNthBiggestFrameSize(frameSizes []webcam.FrameSize, n uint32) webcam.FrameSize {
-	sliceToSort := frameSizes
-	log.Printf("Possible Framesizes: %v\n", sliceToSort)
-	length := len(sliceToSort)
-	if n > uint32(length) {
-		return sliceToSort[len(sliceToSort)-1]
+	length := len(frameSizes)
+	if n == 0 || n > uint32(length) {
+		// Return the smallest frame size or handle error as appropriate
+		return frameSizes[length-1]
 	}
 
-	slices.SortFunc(sliceToSort, func(a, b webcam.FrameSize) int {
-		return int(b.MaxWidth*b.MaxHeight - a.MaxWidth*a.MaxHeight)
-	})
-	log.Printf("Choosen %vth frameSize: %v\n", n, sliceToSort[length-int(n)])
+	// Make a copy to avoid mutating the original slice
+	sliceToSort := make([]webcam.FrameSize, length)
+	copy(sliceToSort, frameSizes)
+
 	log.Printf("Possible Framesizes: %v\n", sliceToSort)
-	return sliceToSort[length-int(n)]
+
+	// Sort descending by area (MaxWidth * MaxHeight)
+	slices.SortFunc(sliceToSort, func(a, b webcam.FrameSize) int {
+		areaA := a.MaxWidth * a.MaxHeight
+		areaB := b.MaxWidth * b.MaxHeight
+		if areaA < areaB {
+			return 1
+		} else if areaA > areaB {
+			return -1
+		}
+		return 0
+	})
+	log.Printf("Choosen %vth frameSize: %v\n", n, sliceToSort[n-1])
+	log.Printf("Possible Framesizes: %v\n", sliceToSort)
+
+	return sliceToSort[n-1]
 }
