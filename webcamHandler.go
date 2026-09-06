@@ -1,80 +1,59 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
-	"sync"
 
 	"github.com/blackjack/webcam"
 )
 
-type Camera struct {
-	Cam                *webcam.Webcam
-	CamReader          chan []byte
-	OpenStreamsCounter int
-	StopStream         chan struct{}
-	mu                 *sync.Mutex
-	StreamStopped      chan struct{}
+type ChannelCollection struct {
+	CamReader       chan []byte
+	NewRequest      chan struct{}
+	CloseConnection chan struct{}
+	ErrorOccured    chan error
 }
 
-func NewCamera() *Camera {
-	return &Camera{
-		CamReader:          make(chan []byte, 100),
-		StopStream:         make(chan struct{}),
-		mu:                 &sync.Mutex{},
-		OpenStreamsCounter: 0,
-		StreamStopped:      make(chan struct{}),
+func NewChannelCollection() *ChannelCollection {
+	return &ChannelCollection{
+		CamReader:       make(chan []byte, 100),
+		NewRequest:      make(chan struct{}),
+		CloseConnection: make(chan struct{}),
+		ErrorOccured:    make(chan error),
 	}
 }
 
-func (cam *Camera) stateReaderHandler(w http.ResponseWriter, r *http.Request) {
-	cam.mu.Lock()
-	defer cam.mu.Unlock()
-	w.WriteHeader(200)
-	w.Header().Set("Content-Type", "application/json")
-	payload, err := json.Marshal(cam)
-	if err != nil {
-		w.Write([]byte(err.Error()))
-	}
-	w.Write(payload)
-}
+func (col *ChannelCollection) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+	headerAlreadySet := false
 
-func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
-	log.Println("I wait to start the handling")
-	cam.mu.Lock()
-	if cam.OpenStreamsCounter == 0 {
-		cam.OpenStreamsCounter += 1
-		err := cam.initializeWebcam("Motion-JPEG")
-		if err != nil {
-			sendError(w, "Failed to initialize cam", 500, err)
-			return
-		}
-		cam.mu.Unlock()
-		go cam.startStreaming()
-		log.Println("Stream was started.")
-	} else {
-		cam.OpenStreamsCounter += 1
-		cam.mu.Unlock()
-	}
+	col.NewRequest <- struct{}{}
 
-	w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
-	w.WriteHeader(200)
+	sendError(w, "Failed to initialize cam", 500, err)
 
 	for {
 		select {
+
+		// Tell webcamMaster that the connection is closed
 		case <-r.Context().Done():
-			log.Println("I wait to close the cam.")
-			cam.mu.Lock()
-			cam.OpenStreamsCounter -= 1
-			if cam.OpenStreamsCounter == 0 {
-				log.Println("I send the stop signal")
-				cam.StopStream <- struct{}{}
-				cam.Cam.Close()
+			col.CloseConnection <- struct{}{}
+
+		// In case something goes wrong
+		case err = <-col.ErrorOccured:
+			if headerAlreadySet == false {
+				sendError(w, "Something went wrong", 500, err)
+				return
 			}
-			cam.mu.Unlock()
-			return
-		case frame := <-cam.CamReader:
+			log.Println("Something went wrong, but it should not affect our connection.")
+			continue
+
+		// Read frame and sent it
+		case frame := <-col.CamReader:
+			if headerAlreadySet == false {
+				w.Header().Set("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+				w.WriteHeader(200)
+				headerAlreadySet = true
+			}
 			w.Write([]byte("\r\n--frame\r\nContent-Type: image/jpeg\r\n\r\n"))
 			w.Write(frame)
 			w.Write([]byte(""))
@@ -82,47 +61,78 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (cam *Camera) initializeWebcam(frameFormat string) error {
-	var err error
-
-	cam.Cam, err = webcam.Open("/dev/video0")
+func initializeWebcam(frameFormat string) (*webcam.Webcam, error) {
+	// Open Webcam
+	cam, err := webcam.Open("/dev/video0")
 	if err != nil {
 		log.Println(err)
-		return err
+		return &webcam.Webcam{}, err
 	}
 
 	// Set Format
-	err = setCamFormat(cam.Cam, frameFormat)
+	err = setCamFormat(cam, frameFormat)
 	if err != nil {
+		cam.Close()
 		log.Println(err)
+		return &webcam.Webcam{}, err
 	}
-	return err
+	return cam, nil
 }
 
-func (cam *Camera) startStreaming() error {
-	log.Println("I wait to start the streaming")
-	cam.mu.Lock()
-	err := cam.Cam.StartStreaming()
-	cam.mu.Unlock()
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+func (col *ChannelCollection) webcamMaster() {
+	var err error
+
+	cameraOpened := false
+	OpenStreamsCounter := 0
+	cam := &webcam.Webcam{}
 
 	for {
 		select {
-		case <-cam.StopStream:
-			log.Println("I stop the for loop")
-			return nil
-		default:
-			log.Println("I wait to deliver the next frame")
-			cam.mu.Lock()
-			frame, err := nextFrame(cam.Cam, timeout)
-			if err != nil {
-				log.Printf("Couldn't read frame: %v", err)
+
+		// New incoming request
+		case <-col.NewRequest:
+			// Start camera if it is the first one
+			if OpenStreamsCounter == 0 {
+				cam, err = initializeWebcam("Motion-JPEG")
+				if err != nil {
+					log.Println("Couldn't start camera because of ", err)
+					col.ErrorOccured <- err
+					continue
+				}
+				err = cam.StartStreaming()
+				if err != nil {
+					log.Println("Couldn't start stream because of ", err)
+					cam.Close()
+					col.ErrorOccured <- err
+					continue
+				}
+				cameraOpened = true
 			}
-			cam.CamReader <- frame
+			OpenStreamsCounter += 1
+
+		// Closed connection
+		case <-col.CloseConnection:
+			// The last one closes the door
+			if OpenStreamsCounter == 1 {
+				err = cam.Close()
+				if err != nil {
+					log.Println("Couldn't close camera because of ", err)
+					continue
+				}
+				cameraOpened = false
+			}
+			OpenStreamsCounter -= 1
+
+		// Generate new frame
+		default:
+			if cameraOpened {
+				frame, err := nextFrame(cam, timeout)
+				if err != nil {
+					log.Printf("Couldn't read frame: %v", err)
+					continue
+				}
+				col.CamReader <- frame
+			}
 		}
-		cam.mu.Unlock()
 	}
 }

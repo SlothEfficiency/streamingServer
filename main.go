@@ -5,14 +5,14 @@ import "net/http"
 const timeout = uint32(1)
 
 func main() {
-	cam := NewCamera()
+	channels := NewChannelCollection()
+	channels.webcamMaster()
 
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /", serveFileHandler)
 
-	mux.HandleFunc("GET /stream", cam.webcamStreamHandler)
-	mux.HandleFunc("GET /state", cam.stateReaderHandler)
+	mux.HandleFunc("GET /stream", channels.webcamStreamHandler)
 
 	server := http.Server{
 		Addr:    ":8080",
