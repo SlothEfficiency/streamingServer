@@ -107,13 +107,14 @@ func (cam *Camera) startStreaming() error {
 	cam.mu.Unlock()
 
 	for {
-		log.Println("I wait to deliver the next frame")
-		cam.mu.Lock()
+
 		select {
 		case <-cam.StopStream:
 			log.Println("I stop the for loop")
 			return nil
 		default:
+			log.Println("I wait to deliver the next frame")
+			cam.mu.Lock()
 			frame, err := nextFrame(cam.Cam, timeout)
 			if err != nil {
 				log.Printf("Couldn't read frame: %v", err)
