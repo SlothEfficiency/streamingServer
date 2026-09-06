@@ -64,6 +64,7 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 			cam.mu.Lock()
 			cam.OpenStreamsCounter -= 1
 			if cam.OpenStreamsCounter == 0 {
+				log.Println("I send the stop signal")
 				cam.StopStream <- struct{}{}
 				cam.Cam.Close()
 			}
