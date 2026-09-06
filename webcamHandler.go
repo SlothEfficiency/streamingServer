@@ -30,6 +30,7 @@ func NewCamera() *Camera {
 
 func (cam *Camera) stateReaderHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
+	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(fmt.Sprintf("%v", cam.OpenStreamsCounter)))
 }
 
@@ -60,7 +61,7 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 			cam.OpenStreamsCounter -= 1
 			if cam.OpenStreamsCounter == 0 {
 				cam.StopStream <- struct{}{}
-				<-cam.StreamStopped
+				cam.Cam.Close()
 			}
 			cam.mu.Unlock()
 			return
@@ -103,8 +104,6 @@ func (cam *Camera) startStreaming() error {
 		cam.mu.Lock()
 		select {
 		case <-cam.StopStream:
-			cam.Cam.Close()
-			cam.StreamStopped <- struct{}{}
 			return nil
 		default:
 			frame, err := nextFrame(cam.Cam, timeout)
