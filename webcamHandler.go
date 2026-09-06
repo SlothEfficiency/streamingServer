@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -29,7 +30,7 @@ func NewCamera() *Camera {
 
 func (cam *Camera) stateReaderHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(200)
-	w.Write([]byte(string(cam.OpenStreamsCounter)))
+	w.Write([]byte(fmt.Sprintf("%v", cam.OpenStreamsCounter)))
 }
 
 func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
@@ -72,8 +73,6 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 
 func (cam *Camera) initializeWebcam(frameFormat string) error {
 	var err error
-	cam.mu.Lock()
-	defer cam.mu.Unlock()
 
 	cam.Cam, err = webcam.Open("/dev/video0")
 	if err != nil {
