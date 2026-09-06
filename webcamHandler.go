@@ -78,9 +78,11 @@ func (cam *Camera) initializeWebcam(frameFormat string) error {
 }
 
 func (cam *Camera) startStreaming() error {
-	err := cam.Cam.StartStreaming()
 	cam.mu.Lock()
 	defer cam.mu.Unlock()
+
+	err := cam.Cam.StartStreaming()
+
 	if err != nil {
 		log.Println(err)
 		return err
