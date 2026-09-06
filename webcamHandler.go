@@ -44,8 +44,7 @@ func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case <-r.Context().Done():
-			cam.OpenStreamsCounter.Add(-1)
-			if cam.OpenStreamsCounter.Load() == 0 {
+			if cam.OpenStreamsCounter.CompareAndSwap(1, 0) {
 				cam.StopStream <- struct{}{}
 			}
 			return
@@ -84,7 +83,6 @@ func (cam *Camera) startStreaming() error {
 		select {
 		case <-cam.StopStream:
 			cam.Cam.Close()
-			close(cam.CamReader)
 			return nil
 		default:
 			frame, err := nextFrame(cam.Cam, timeout)
