@@ -126,6 +126,7 @@ func (col *ChannelCollection) webcamMaster() {
 					continue
 				}
 				cameraOpened = false
+				log.Println("Camera closed since no connection is still open")
 			}
 			OpenStreamsCounter -= 1
 
