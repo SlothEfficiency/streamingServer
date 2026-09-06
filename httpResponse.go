@@ -30,9 +30,3 @@ func sendError(w http.ResponseWriter, internalMsg string, statusCode int, err er
 	w.WriteHeader(400)
 	w.Write(byteResponse)
 }
-
-func sendResponse(w http.ResponseWriter, statusCode int, contentType string, payload []byte) {
-	w.Header().Set("Content-Type", contentType)
-	w.WriteHeader(statusCode)
-	w.Write(payload)
-}
