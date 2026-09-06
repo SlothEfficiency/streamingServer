@@ -25,18 +25,22 @@ func NewChannelCollection() *ChannelCollection {
 
 func (col *ChannelCollection) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
+
+	connectionClosed := false
 	headerAlreadySet := false
 
 	col.NewRequest <- struct{}{}
-
-	sendError(w, "Failed to initialize cam", 500, err)
+	log.Printf("New Conncetion started from ip-address %v. \n", r.RemoteAddr)
 
 	for {
 		select {
 
 		// Tell webcamMaster that the connection is closed
 		case <-r.Context().Done():
-			col.CloseConnection <- struct{}{}
+			if connectionClosed != true {
+				col.CloseConnection <- struct{}{}
+				connectionClosed = true
+			}
 
 		// In case something goes wrong
 		case err = <-col.ErrorOccured:
@@ -91,6 +95,7 @@ func (col *ChannelCollection) webcamMaster() {
 
 		// New incoming request
 		case <-col.NewRequest:
+
 			// Start camera if it is the first one
 			if OpenStreamsCounter == 0 {
 				cam, err = initializeWebcam("Motion-JPEG")
@@ -112,6 +117,7 @@ func (col *ChannelCollection) webcamMaster() {
 
 		// Closed connection
 		case <-col.CloseConnection:
+
 			// The last one closes the door
 			if OpenStreamsCounter == 1 {
 				err = cam.Close()

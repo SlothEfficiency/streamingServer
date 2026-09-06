@@ -6,7 +6,7 @@ const timeout = uint32(1)
 
 func main() {
 	channels := NewChannelCollection()
-	channels.webcamMaster()
+	go channels.webcamMaster()
 
 	mux := http.NewServeMux()
 
