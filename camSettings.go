@@ -34,12 +34,14 @@ func setCamFormat(cam *webcam.Webcam, formatName string) error {
 
 func findNthBiggestFrameSize(frameSizes []webcam.FrameSize, n uint32) webcam.FrameSize {
 	log.Printf("Possible Framesizes: %v\n", frameSizes)
-	if n > uint32(len(frameSizes)) {
+	length := len(frameSizes)
+	if n > uint32(length) {
 		return frameSizes[len(frameSizes)-1]
 	}
 
 	slices.SortFunc(frameSizes, func(a, b webcam.FrameSize) int {
 		return int(b.MaxWidth*b.MaxHeight - a.MaxWidth*a.MaxHeight)
 	})
-	return frameSizes[n-1]
+	log.Printf("Choosen %vth frameSize: %v", n, frameSizes[length-int(n)-1])
+	return frameSizes[length-int(n)-1]
 }
