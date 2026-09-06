@@ -12,6 +12,7 @@ func main() {
 	mux.HandleFunc("GET /", serveFileHandler)
 
 	mux.HandleFunc("GET /stream", cam.webcamStreamHandler)
+	mux.HandleFunc("GET /state", cam.stateReaderHandler)
 
 	server := http.Server{
 		Addr:    ":8080",

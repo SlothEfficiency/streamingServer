@@ -22,6 +22,11 @@ func NewCamera() *Camera {
 	}
 }
 
+func (cam *Camera) stateReaderHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(200)
+	w.Write([]byte(string(cam.OpenStreamsCounter.Load())))
+}
+
 func (cam *Camera) webcamStreamHandler(w http.ResponseWriter, r *http.Request) {
 	if cam.OpenStreamsCounter.CompareAndSwap(0, 1) {
 		err := cam.initializeWebcam("Motion-JPEG")
