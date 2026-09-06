@@ -73,7 +73,6 @@ func (cam *Camera) initializeWebcam(frameFormat string) error {
 	err = setCamFormat(cam.Cam, frameFormat)
 	if err != nil {
 		log.Println(err)
-		cam.Cam.Close()
 	}
 	return err
 }
@@ -86,6 +85,7 @@ func (cam *Camera) startStreaming() error {
 		log.Println(err)
 		return err
 	}
+
 	for {
 		select {
 		case <-cam.StopStream:
