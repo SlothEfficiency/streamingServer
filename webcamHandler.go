@@ -110,6 +110,7 @@ func (cam *Camera) startStreaming() error {
 		cam.mu.Lock()
 		select {
 		case <-cam.StopStream:
+			log.Println("I stop the for loop")
 			return nil
 		default:
 			frame, err := nextFrame(cam.Cam, timeout)
