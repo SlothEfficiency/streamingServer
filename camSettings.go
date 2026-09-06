@@ -16,7 +16,7 @@ func setCamFormat(cam *webcam.Webcam, formatName string) error {
 			frameSizes := cam.GetSupportedFrameSizes(format)
 
 			// Always choose max Resolution
-			maxFrameSize := findNthBiggestFrameSize(frameSizes, 2)
+			maxFrameSize := findNthBiggestFrameSize(frameSizes, 5)
 			pixelformat, width, height, err := cam.SetImageFormat(format, maxFrameSize.MaxWidth, maxFrameSize.MaxHeight)
 			if err != nil {
 				fmt.Println("Couldn't set CamFormat.")
