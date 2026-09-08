@@ -3,23 +3,26 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/blackjack/webcam"
 )
 
 type ChannelCollection struct {
-	CamReader       chan []byte
-	NewRequest      chan struct{}
-	CloseConnection chan struct{}
-	ErrorOccured    chan error
+	CamReader         chan []byte
+	NewRequest        chan struct{}
+	CloseConnection   chan struct{}
+	ErrorOccured      chan error
+	StopReadingFrames chan struct{}
 }
 
 func NewChannelCollection() *ChannelCollection {
 	return &ChannelCollection{
-		CamReader:       make(chan []byte, 100),
-		NewRequest:      make(chan struct{}),
-		CloseConnection: make(chan struct{}),
-		ErrorOccured:    make(chan error),
+		CamReader:         make(chan []byte, 100),
+		NewRequest:        make(chan struct{}),
+		CloseConnection:   make(chan struct{}),
+		ErrorOccured:      make(chan error),
+		StopReadingFrames: make(chan struct{}),
 	}
 }
 
@@ -86,7 +89,6 @@ func initializeWebcam(frameFormat string) (*webcam.Webcam, error) {
 func (col *ChannelCollection) webcamMaster() {
 	var err error
 
-	cameraOpened := false
 	OpenStreamsCounter := 0
 	cam := &webcam.Webcam{}
 
@@ -111,7 +113,7 @@ func (col *ChannelCollection) webcamMaster() {
 					col.ErrorOccured <- err
 					continue
 				}
-				cameraOpened = true
+				go col.readFrames(cam)
 			}
 			OpenStreamsCounter += 1
 
@@ -120,26 +122,33 @@ func (col *ChannelCollection) webcamMaster() {
 
 			// The last one closes the door
 			if OpenStreamsCounter == 1 {
+				col.StopReadingFrames <- struct{}{}
 				err = cam.Close()
 				if err != nil {
 					log.Println("Couldn't close camera because of ", err)
 					continue
 				}
-				cameraOpened = false
 				log.Println("Camera closed since no connection is still open")
+
 			}
 			OpenStreamsCounter -= 1
+		}
+	}
+}
 
-		// Generate new frame
+func (col *ChannelCollection) readFrames(cam *webcam.Webcam) {
+	for {
+		select {
+		case <-col.StopReadingFrames:
+			return
 		default:
-			if cameraOpened {
-				frame, err := nextFrame(cam, timeout)
-				if err != nil {
-					log.Printf("Couldn't read frame: %v", err)
-					continue
-				}
-				col.CamReader <- frame
+			frame, err := nextFrame(cam, timeout)
+			if err != nil {
+				log.Printf("Couldn't read frame: %v", err)
+				time.Sleep(100 * time.Millisecond)
+				continue
 			}
+			col.CamReader <- frame
 		}
 	}
 }
