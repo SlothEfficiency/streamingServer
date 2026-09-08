@@ -145,6 +145,7 @@ func (col *ChannelCollection) readFrames(cam *webcam.Webcam) {
 			frame, err := nextFrame(cam, timeout)
 			if err != nil {
 				log.Printf("Couldn't read frame: %v", err)
+				// Sleep to not get super much errors when closing the stream
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
